@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignBridge — Two-Way Sign Language & Speech Translator</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: [
+                            '-apple-system',
+                            'BlinkMacSystemFont',
+                            '"SF Pro Display"',
+                            '"SF Pro Text"',
+                            'system-ui',
+                            'Segoe UI',
+                            'Roboto',
+                            'sans-serif'
+                        ],
+                        mono: [
+                            '"SF Mono"',
+                            'ui-monospace',
+                            'SFMono-Regular',
+                            'Menlo',
+                            'Monaco',
+                            'Consolas',
+                            'monospace'
+                        ]
+                    },
+                    colors: {
+                        macBlue: '#007AFF',
+                        macBlueHover: '#0062CC',
+                        macGreen: '#34C759',
+                        macAmber: '#FF9500',
+                        macRed: '#FF3B30',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Apple macOS Frosted Glassmorphism Styling -->
+    <style>
+        :root {
+            --mac-wallpaper: radial-gradient(circle at 18% 15%, rgba(255, 255, 255, 0.55) 0%, transparent 45%),
+                             radial-gradient(circle at 82% 20%, rgba(190, 218, 255, 0.5) 0%, transparent 48%),
+                             radial-gradient(circle at 50% 88%, rgba(226, 235, 240, 0.6) 0%, transparent 52%),
+                             linear-gradient(135deg, #e0eafc 0%, #cfdef3 50%, #e2ebf0 100%);
+            --mac-window-bg: rgba(255, 255, 255, 0.68);
+            --mac-card-bg: rgba(255, 255, 255, 0.54);
+            --mac-subcard-bg: rgba(255, 255, 255, 0.72);
+            --mac-input-bg: rgba(255, 255, 255, 0.85);
+            --mac-border: rgba(255, 255, 255, 0.82);
+            --mac-hairline: rgba(15, 23, 42, 0.08);
+            --mac-text-primary: #1d1d1f;
+            --mac-text-secondary: #6e6e73;
+            --mac-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.14), 0 4px 16px -2px rgba(15, 23, 42, 0.05);
+        }
+
+        html.dark {
+            --mac-wallpaper: radial-gradient(circle at 18% 15%, rgba(30, 58, 95, 0.38) 0%, transparent 46%),
+                             radial-gradient(circle at 84% 18%, rgba(24, 48, 82, 0.35) 0%, transparent 48%),
+                             radial-gradient(circle at 50% 88%, rgba(13, 17, 23, 0.7) 0%, transparent 54%),
+                             linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+            --mac-window-bg: rgba(22, 27, 34, 0.68);
+            --mac-card-bg: rgba(30, 36, 46, 0.56);
+            --mac-subcard-bg: rgba(38, 45, 58, 0.62);
+            --mac-input-bg: rgba(18, 22, 30, 0.82);
+            --mac-border: rgba(255, 255, 255, 0.14);
+            --mac-hairline: rgba(255, 255, 255, 0.10);
+            --mac-text-primary: #f5f5f7;
+            --mac-text-secondary: #98989d;
+            --mac-shadow: 0 28px 70px -12px rgba(0, 0, 0, 0.62), 0 4px 18px -2px rgba(0, 0, 0, 0.38);
+        }
+
+        body {
+            background: var(--mac-wallpaper);
+            background-attachment: fixed;
+            color: var(--mac-text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            transition: color 0.2s ease;
+        }
+
+        /* macOS Window & Frosted Glass Surfaces */
+        .mac-window {
+            background: var(--mac-window-bg);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--mac-border);
+            box-shadow: var(--mac-shadow);
+        }
+
+        .mac-panel {
+            background: var(--mac-card-bg);
+            backdrop-filter: blur(28px) saturate(180%);
+            -webkit-backdrop-filter: blur(28px) saturate(180%);
+            border: 1px solid var(--mac-hairline);
+            box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+        }
+
+        .mac-subcard {
+            background: var(--mac-subcard-bg);
+            backdrop-filter: blur(22px) saturate(175%);
+            -webkit-backdrop-filter: blur(22px) saturate(175%);
+            border: 1px solid var(--mac-hairline);
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .mac-input {
+            background: var(--mac-input-bg);
+            border: 1px solid var(--mac-hairline);
+            color: var(--mac-text-primary);
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .mac-input:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3.5px rgba(0, 122, 255, 0.22);
+        }
+
+        .mac-text-muted {
+            color: var(--mac-text-secondary);
+        }
+
+        .mac-divider {
+            border-color: var(--mac-hairline);
+        }
+
+        /* Clean macOS Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(142, 142, 147, 0.35);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(142, 142, 147, 0.55);
+        }
+    </style>
+
+    <!-- MediaPipe Tasks Vision Dual-Hand Engine -->
+    <script type="module">
+        import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+        let handLandmarker = null;
+        let webcamRunning = false;
+        let mediaStream = null;
+        let lastVideoTime = -1;
+
+        // Dual-Hand State (126 floats: [Right 63, Left 63])
+        let latestDualVector = null;
+        let latestActiveHandsCount = 0;
+
+        // Fast EMA smoothing for responsive, jitter-free Apple-like motion
+        const EMA_ALPHA = 0.72;
+        let smoothedHands = { Right: null, Left: null };
+
+        // Custom Single-Word KNN Dataset
+        let gestureDataset = [];
+        let candidateWord = "";
+        let stableFrames = 0;
+        const FAST_LOCK_FRAMES = 3; // Immediate 3-frame lock-in (~80ms), no 100% percentage meter
+        let lastSpokenWord = "";
+        let lastSpokenTimestamp = 0;
+
+        const HAND_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 4],
+            [0, 5], [5, 6], [6, 7], [7, 8],
+            [5, 9], [9, 10], [10, 11], [11, 12],
+            [9, 13], [13, 14], [14, 15], [15, 16],
+            [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
+        ];
+        const FINGERTIPS = new Set([4, 8, 12, 16, 20]);
+
+        const video = document.getElementById("webcam");
+        const canvas = document.getElementById("output_canvas");
+        const ctx = canvas.getContext("2d");
+        const detectedTextEl = document.getElementById("detectedText");
+        const handBadgeEl = document.getElementById("activeHandsHud");
+        const sentenceBoxEl = document.getElementById("sentenceBox");
+        const statusEl = document.getElementById("modelStatus");
+        const statusDotEl = document.getElementById("modelStatusDot");
+        const placeholderEl = document.getElementById("cameraPlaceholder");
+
+        // Enforce Single Clean Word Without Slashes (and strictly block LOVE)
+        window.sanitizeSingleWord = function(raw) {
+            if (!raw) return "";
+            const cleaned = String(raw)
+                .replace(/[\/\\|_-]+/g, " ")
+                .replace(/[^a-zA-Z\s]/g, "")
+                .trim()
+                .split(/\s+/)[0] || "";
+            const upper = cleaned.toUpperCase();
+            if (upper === "LOVE") return "";
+            return upper;
+        };
+
+        // macOS Floating Notification Banner
+        window.showToast = function(message, tone = "info") {
+            const container = document.getElementById("toastContainer");
+            const toast = document.createElement("div");
+            const dotColor = tone === "warn" ? "bg-[#FF9500]" : (tone === "success" ? "bg-[#34C759]" : "bg-[#007AFF]");
+
+            toast.className = "mac-window px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all duration-200 translate-y-2 opacity-0";
+            toast.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor} shrink-0"></span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => toast.classList.remove("translate-y-2", "opacity-0"));
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 220);
+            }, 2800);
+        };
+
+        // Web SpeechSynthesis Output
+        let preferredVoice = null;
+        function resolveVoice() {
+            if (!("speechSynthesis" in window)) return;
+            const voices = window.speechSynthesis.getVoices();
+            preferredVoice = voices.find(v => v.lang.startsWith("en") && v.localService)
+                || voices.find(v => v.lang.startsWith("en"))
+                || voices[0] || null;
+        }
+        if ("speechSynthesis" in window) {
+            resolveVoice();
+            window.speechSynthesis.onvoiceschanged = resolveVoice;
+        }
+
+        window.speakWord = function(text, force = false) {
+            if (!force && !document.getElementById("autoSpeakToggle").checked) return;
+            if (!("speechSynthesis" in window) || !text) return;
+            try {
+                window.speechSynthesis.cancel();
+                const utter = new SpeechSynthesisUtterance(text.toLowerCase());
+                utter.rate = 1.1;
+                utter.pitch = 1.0;
+                if (preferredVoice) utter.voice = preferredVoice;
+                window.speechSynthesis.speak(utter);
+            } catch (e) {}
+        };
+
+        // Initialize MediaPipe HandLandmarker (2 Hands)
+        async function initHandLandmarker() {
+            try {
+                const vision = await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+                );
+                handLandmarker = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                        delegate: "GPU"
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 2,
+                    minHandDetectionConfidence: 0.45,
+                    minHandPresenceConfidence: 0.45,
+                    minTrackingConfidence: 0.45
+                });
+                statusEl.textContent = "Dual-Hand Vision Ready";
+                statusDotEl.className = "w-2 h-2 rounded-full bg-[#34C759]";
+            } catch (err) {
+                console.error(err);
+                statusEl.textContent = "Vision Model Unavailable";
+                statusDotEl.className = "w-2 h-2 rounded-full bg-[#FF3B30]";
+                window.showToast("Unable to load hand tracking model.", "warn");
+            }
+        }
+        initHandLandmarker();
+
+        // Webcam Start / Stop Toggle
+        const webcamBtn = document.getElementById("webcamButton");
+        function setWebcamIdleUI() {
+            webcamBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span>Start Camera</span>
+            `;
+            webcamBtn.className = "flex items-center gap-1.5 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95";
+        }
+
+        webcamBtn.addEventListener("click", async () => {
+            if (!handLandmarker) {
+                window.showToast("Hand tracking model is still initializing.", "warn");
+                return;
+            }
+
+            if (webcamRunning) {
+                webcamRunning = false;
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(t => t.stop());
+                    mediaStream = null;
+                }
+                video.srcObject = null;
+                smoothedHands = { Right: null, Left: null };
+                latestDualVector = null;
+                latestActiveHandsCount = 0;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                placeholderEl.classList.remove("hidden");
+                detectedTextEl.textContent = "Camera Off";
+                handBadgeEl.textContent = "0 HANDS";
+                setWebcamIdleUI();
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                window.showToast("Camera access is not supported in this browser.", "warn");
+                return;
+            }
+
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+                webcamRunning = true;
+                video.srcObject = mediaStream;
+                placeholderEl.classList.add("hidden");
+
+                webcamBtn.innerHTML = `
+                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                    <span>Stop Camera</span>
+                `;
+                webcamBtn.className = "flex items-center gap-1.5 bg-[#FF3B30] hover:bg-[#D70015] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95";
+
+                video.onloadeddata = () => predictLoop();
+            } catch (err) {
+                webcamRunning = false;
+                setWebcamIdleUI();
+                window.showToast("Camera permission denied or no camera detected.", "warn");
+            }
+        });
+
+        // EMA Landmark Smoothing
+        function smoothLandmarks(side, raw) {
+            const prev = smoothedHands[side];
+            if (!prev || prev.length !== raw.length) {
+                const init = raw.map(p => ({ x: p.x, y: p.y, z: p.z }));
+                smoothedHands[side] = init;
+                return init;
+            }
+            const next = raw.map((p, i) => ({
+                x: EMA_ALPHA * p.x + (1 - EMA_ALPHA) * prev[i].x,
+                y: EMA_ALPHA * p.y + (1 - EMA_ALPHA) * prev[i].y,
+                z: EMA_ALPHA * p.z + (1 - EMA_ALPHA) * prev[i].z
+            }));
+            smoothedHands[side] = next;
+            return next;
+        }
+
+        // Normalize 21 landmarks relative to wrist
+        function normalizeHand(landmarks) {
+            if (!landmarks) return new Array(63).fill(0);
+            const wrist = landmarks[0];
+            let maxDist = 0;
+            const out = [];
+            for (const lm of landmarks) {
+                const dx = lm.x - wrist.x;
+                const dy = lm.y - wrist.y;
+                const dz = lm.z - wrist.z;
+                const d = Math.hypot(dx, dy, dz);
+                if (d > maxDist) maxDist = d;
+                out.push(dx, dy, dz);
+            }
+            return out.map(v => v / (maxDist || 1));
+        }
+
+        function buildDualVector(rightLm, leftLm) {
+            return [...normalizeHand(rightLm), ...normalizeHand(leftLm)];
+        }
+
+        // Single-Hand Geometric Analysis (LOVE sign completely removed)
+        function inspectHand(lm) {
+            const wrist = lm[0];
+            const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+            const extended = (tip, pip) => dist(lm[tip], wrist) > dist(lm[pip], wrist) * 1.03;
+
+            const indexExt = extended(8, 6);
+            const middleExt = extended(12, 10);
+            const ringExt = extended(16, 14);
+            const pinkyExt = extended(20, 18);
+
+            const palmScale = dist(wrist, lm[9]) || 0.1;
+            const thumbTip = lm[4];
+            const thumbIp = lm[3];
+            const indexMcp = lm[5];
+
+            const thumbOut = dist(thumbTip, indexMcp) > palmScale * 0.48;
+            const thumbUp = thumbTip.y < thumbIp.y - palmScale * 0.06 && thumbTip.y < indexMcp.y;
+            const pinchDist = dist(thumbTip, lm[8]);
+
+            const openPalm = indexExt && middleExt && ringExt && pinkyExt;
+            const fist = !indexExt && !middleExt && !ringExt && !pinkyExt && !thumbUp;
+            const goodSign = (pinchDist < palmScale * 0.42 && middleExt && ringExt) || (!indexExt && !middleExt && !ringExt && thumbUp && thumbOut);
+            const peaceSign = indexExt && middleExt && !ringExt && !pinkyExt;
+            const youSign = indexExt && !middleExt && !ringExt && !pinkyExt;
+
+            return {
+                wrist,
+                center: lm[9],
+                palmScale,
+                openPalm,
+                fist,
+                goodSign,
+                peaceSign,
+                youSign
+            };
+        }
+
+        // Built-In Single-Word Classifier (No Slashes, No LOVE Sign)
+        function classifyBuiltIn(rightLm, leftLm) {
+            // Dual-Hand Gestures
+            if (rightLm && leftLm) {
+                const r = inspectHand(rightLm);
+                const l = inspectHand(leftLm);
+                const scale = (r.palmScale + l.palmScale) * 0.5 || 0.1;
+                const centerDist = Math.hypot(r.center.x - l.center.x, r.center.y - l.center.y);
+
+                // Both hands close together -> THANKS
+                if (centerDist < scale * 1.45) {
+                    return "THANKS";
+                }
+                // Both open palms apart -> STOP
+                if (r.openPalm && l.openPalm) {
+                    return "STOP";
+                }
+                // Both hands raised -> HELP
+                return "HELP";
+            }
+
+            // Single-Hand Gestures
+            const lm = rightLm || leftLm;
+            if (!lm) return null;
+            const h = inspectHand(lm);
+
+            if (h.goodSign) return "GOOD";
+            if (h.openPalm) return "HELLO";
+            if (h.peaceSign) return "PEACE";
+            if (h.youSign) return "YOU";
+            if (h.fist) return "YES";
+
+            return null;
+        }
+
+        // Custom KNN + Built-In Classifier
+        function classifySign(dualVec, rightLm, leftLm, activeCount) {
+            if (gestureDataset.length > 0 && dualVec) {
+                let bestWord = null;
+                let minDist = Infinity;
+
+                for (const sample of gestureDataset) {
+                    if (sample.hands !== activeCount) continue;
+                    let sq = 0;
+                    for (let i = 0; i < dualVec.length; i++) {
+                        const d = dualVec[i] - sample.vector[i];
+                        sq += d * d;
+                    }
+                    const dist = Math.sqrt(sq);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        bestWord = sample.word;
+                    }
+                }
+
+                const threshold = activeCount === 2 ? 2.35 : 1.85;
+                if (bestWord && minDist < threshold) {
+                    return bestWord;
+                }
+            }
+
+            return classifyBuiltIn(rightLm, leftLm);
+        }
+
+        // Real-Time Dual-Hand Prediction Loop
+        function predictLoop() {
+            if (!webcamRunning) return;
+
+            if (video.videoWidth && video.videoHeight) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+            }
+
+            if (lastVideoTime !== video.currentTime && video.readyState >= 2) {
+                lastVideoTime = video.currentTime;
+                const results = handLandmarker.detectForVideo(video, performance.now());
+
+                ctx.save();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                let rightLm = null;
+                let leftLm = null;
+                const count = results.landmarks ? results.landmarks.length : 0;
+
+                for (let i = 0; i < count; i++) {
+                    const rawLm = results.landmarks[i];
+                    const handed = results.handednesses?.[i]?.[0]?.categoryName;
+                    let side = handed || (i === 0 ? "Right" : "Left");
+                    if (side === "Right" && rightLm) side = "Left";
+                    if (side === "Left" && leftLm) side = "Right";
+
+                    const smoothed = smoothLandmarks(side, rawLm);
+                    if (side === "Right") rightLm = smoothed;
+                    else leftLm = smoothed;
+                }
+
+                if (!rightLm) smoothedHands.Right = null;
+                if (!leftLm) smoothedHands.Left = null;
+
+                latestActiveHandsCount = (rightLm ? 1 : 0) + (leftLm ? 1 : 0);
+                handBadgeEl.textContent = latestActiveHandsCount === 2
+                    ? "2 HANDS"
+                    : (latestActiveHandsCount === 1 ? "1 HAND" : "0 HANDS");
+
+                if (latestActiveHandsCount > 0) {
+                    if (rightLm) drawAppleHandSkeleton(rightLm, "Right");
+                    if (leftLm) drawAppleHandSkeleton(leftLm, "Left");
+                    if (rightLm && leftLm) drawDualHandLink(rightLm[0], leftLm[0]);
+
+                    latestDualVector = buildDualVector(rightLm, leftLm);
+                    const rawDetected = classifySign(latestDualVector, rightLm, leftLm, latestActiveHandsCount);
+                    const cleanWord = window.sanitizeSingleWord(rawDetected);
+
+                    if (cleanWord) {
+                        detectedTextEl.textContent = cleanWord;
+                        detectedTextEl.className = "text-[#007AFF] dark:text-[#38BDF8] font-bold tracking-wide";
+
+                        if (cleanWord === candidateWord) {
+                            stableFrames++;
+                        } else {
+                            candidateWord = cleanWord;
+                            stableFrames = 1;
+                        }
+
+                        // Fast 3-frame lock-in without any percentage counter
+                        if (stableFrames === FAST_LOCK_FRAMES) {
+                            commitDetectedWord(cleanWord);
+                        }
+                    } else {
+                        detectedTextEl.textContent = "Tracking";
+                        detectedTextEl.className = "mac-text-muted font-medium";
+                        candidateWord = "";
+                        stableFrames = 0;
+                    }
+                } else {
+                    latestDualVector = null;
+                    detectedTextEl.textContent = "Show Hand";
+                    detectedTextEl.className = "mac-text-muted font-medium";
+                    candidateWord = "";
+                    stableFrames = 0;
+                }
+
+                ctx.restore();
+            }
+
+            if (webcamRunning) {
+                requestAnimationFrame(predictLoop);
+            }
+        }
+
+        // Clean Apple-Style Skeletal Tracking Overlay
+        function drawAppleHandSkeleton(landmarks, side) {
+            const w = canvas.width;
+            const h = canvas.height;
+            const isRight = side === "Right";
+
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+
+            for (const [a, b] of HAND_CONNECTIONS) {
+                const p1 = landmarks[a];
+                const p2 = landmarks[b];
+                ctx.strokeStyle = isRight ? "rgba(0, 122, 255, 0.88)" : "rgba(52, 199, 89, 0.88)";
+                ctx.lineWidth = 2.75;
+                ctx.beginPath();
+                ctx.moveTo(p1.x * w, p1.y * h);
+                ctx.lineTo(p2.x * w, p2.y * h);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            for (let i = 0; i < landmarks.length; i++) {
+                const lm = landmarks[i];
+                const x = lm.x * w;
+                const y = lm.y * h;
+                const isTip = FINGERTIPS.has(i) || i === 0;
+
+                ctx.beginPath();
+                ctx.arc(x, y, isTip ? 5 : 3.2, 0, Math.PI * 2);
+                ctx.fillStyle = "#FFFFFF";
+                ctx.fill();
+
+                ctx.lineWidth = 1.8;
+                ctx.strokeStyle = isRight ? "#007AFF" : "#34C759";
+                ctx.stroke();
+            }
+
+            // Un-mirrored macOS Wrist Pill Label
+            const wx = landmarks[0].x * w;
+            const wy = landmarks[0].y * h + 22;
+            ctx.save();
+            ctx.translate(wx, wy);
+            ctx.scale(-1, 1);
+            ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif';
+            ctx.textAlign = "center";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+            ctx.fillText(isRight ? "RIGHT" : "LEFT", 0, 0);
+            ctx.restore();
+        }
+
+        // Subtle Hairline Tether Between Both Wrists
+        function drawDualHandLink(w1, w2) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(w1.x * canvas.width, w1.y * canvas.height);
+            ctx.lineTo(w2.x * canvas.width, w2.y * canvas.height);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function commitDetectedWord(word) {
+            const singleWord = window.sanitizeSingleWord(word);
+            if (!singleWord) return;
+
+            const now = performance.now();
+            if (lastSpokenWord === singleWord && now - lastSpokenTimestamp < 850) return;
+
+            lastSpokenWord = singleWord;
+            lastSpokenTimestamp = now;
+
+            const existing = sentenceBoxEl.value.trim();
+            const tokens = existing ? existing.split(/\s+/) : [];
+            if (tokens[tokens.length - 1] !== singleWord) {
+                sentenceBoxEl.value = (existing + " " + singleWord).trim();
+            }
+
+            window.speakWord(singleWord, false);
+        }
+
+        // Custom Single-Word Sign Trainer
+        document.getElementById("recordSignBtn").addEventListener("click", () => {
+            const input = document.getElementById("signLabelInput");
+            const rawVal = input.value.trim().toUpperCase();
+
+            if (rawVal === "LOVE") {
+                window.showToast("Please choose a different sign word.", "warn");
+                input.value = "";
+                input.focus();
+                return;
+            }
+
+            const singleWord = window.sanitizeSingleWord(rawVal);
+
+            if (!singleWord) {
+                window.showToast("Enter a single word first (e.g., WATER, DOCTOR).", "warn");
+                input.focus();
+                return;
+            }
+            if (!latestDualVector || latestActiveHandsCount === 0) {
+                window.showToast("Show 1 or 2 hands in front of the camera first.", "warn");
+                return;
+            }
+
+            input.value = singleWord;
+            gestureDataset.push({
+                word: singleWord,
+                vector: [...latestDualVector],
+                hands: latestActiveHandsCount
+            });
+            renderTrainedSigns();
+            window.showToast(`Captured "${singleWord}" (${latestActiveHandsCount} ${latestActiveHandsCount === 1 ? "hand" : "hands"})`, "success");
+        });
+
+        document.getElementById("signLabelInput").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                document.getElementById("recordSignBtn").click();
+            }
+        });
+
+        window.removeTrainedSign = (targetWord) => {
+            gestureDataset = gestureDataset.filter(item => item.word !== targetWord);
+            renderTrainedSigns();
+        };
+
+        function renderTrainedSigns() {
+            const listEl = document.getElementById("trainedSignsList");
+            const grouped = {};
+            gestureDataset.forEach(item => {
+                if (!grouped[item.word]) grouped[item.word] = { count: 0, hands: item.hands };
+                grouped[item.word].count++;
+            });
+
+            const entries = Object.entries(grouped);
+            if (entries.length === 0) {
+                listEl.innerHTML = `<span class="text-[11px] mac-text-muted">Built-in signs: HELLO, THANKS, HELP, STOP, YES, PEACE, YOU, GOOD</span>`;
+                return;
+            }
+
+            listEl.innerHTML = entries.map(([word, info]) => `
+                <span class="inline-flex items-center gap-1.5 bg-[#007AFF]/12 border border-[#007AFF]/25 text-[#007AFF] dark:text-[#60A5FA] text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full">
+                    <span>${word}</span>
+                    <span class="text-[10px] opacity-75">${info.hands}H</span>
+                    <button onclick="removeTrainedSign('${word}')" class="hover:opacity-75 ml-0.5" aria-label="Remove ${word}">&times;</button>
+                </span>
+            `).join("");
+        }
+
+        window.clearSentence = () => {
+            sentenceBoxEl.value = "";
+            lastSpokenWord = "";
+            candidateWord = "";
+        };
+
+        window.speakFullSentence = () => {
+            const text = sentenceBoxEl.value.trim();
+            if (text) {
+                window.speakWord(text, true);
+            } else {
+                window.showToast("No detected words to speak yet.", "warn");
+            }
+        };
+    </script>
+</head>
+
+<body class="font-sans min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-8 selection:bg-[#007AFF]/20 selection:text-[#007AFF]">
+
+    <!-- macOS Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <!-- Main macOS Application Window -->
+    <main class="mac-window max-w-7xl w-full mx-auto rounded-[28px] overflow-hidden">
+
+        <!-- macOS Window Title Bar -->
+        <header class="px-5 sm:px-7 py-4 border-b mac-divider flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                <!-- Authentic macOS Traffic Lights -->
+                <div class="flex items-center gap-2 shrink-0" aria-hidden="true">
+                    <span class="w-3 h-3 rounded-full bg-[#FF5F56] border border-black/10"></span>
+                    <span class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-black/10"></span>
+                    <span class="w-3 h-3 rounded-full bg-[#27C93F] border border-black/10"></span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-b from-[#3395FF] to-[#007AFF] text-white flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-lg sm:text-xl font-bold tracking-tight">SignBridge</h1>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#007AFF]/12 text-[#007AFF] dark:text-[#60A5FA]">
+                                Two-Way AI
+                            </span>
+                        </div>
+                        <p class="text-xs mac-text-muted">Two-Way Sign Language &amp; Speech Translator</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Title Bar Controls: Light/Dark Switcher + Vision Status -->
+            <div class="flex items-center gap-2.5 self-end sm:self-auto">
+                <!-- macOS Appearance Pill Switcher -->
+                <div class="mac-subcard p-1 rounded-full flex items-center gap-0.5" role="group" aria-label="Appearance Mode">
+                    <button id="lightThemeBtn" onclick="setAppearance('light')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all bg-[#007AFF] text-white shadow-sm">
+                        Light
+                    </button>
+                    <button id="darkThemeBtn" onclick="setAppearance('dark')" class="px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all mac-text-muted hover:opacity-80">
+                        Dark
+                    </button>
+                </div>
+
+                <!-- System Status Pill -->
+                <div class="mac-subcard px-3.5 py-1.5 rounded-full flex items-center gap-2">
+                    <span id="modelStatusDot" class="w-2 h-2 rounded-full bg-[#FF9500] animate-pulse"></span>
+                    <span id="modelStatus" class="text-xs font-medium mac-text-muted">Initializing Vision...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dual-Panel Workspace -->
+        <div class="p-5 sm:p-7 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7">
+
+            <!-- PANEL 1: SIGN TO SPEECH (Dual-Hand Camera) -->
+            <section class="mac-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-mono font-semibold text-[#007AFF] dark:text-[#60A5FA]">01</span>
+                                <h2 class="text-base sm:text-lg font-bold tracking-tight">1. Sign &rarr; Speech (Dual-Hand Camera)</h2>
+                            </div>
+                            <p class="text-xs mac-text-muted mt-0.5">Dual-hand camera tracking with instant single-word output</p>
+                        </div>
+
+                        <button id="webcamButton" class="flex items-center gap-1.5 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <span>Start Camera</span>
+                        </button>
+                    </div>
+
+                    <!-- Optical Camera Frame -->
+                    <div class="relative bg-slate-950 rounded-2xl overflow-hidden aspect-video mb-4 border mac-divider shadow-inner">
+                        <video id="webcam" autoplay playsinline class="w-full h-full object-cover transform -scale-x-100"></video>
+                        <canvas id="output_canvas" class="absolute top-0 left-0 w-full h-full transform -scale-x-100 pointer-events-none"></canvas>
+
+                        <!-- Active Hands Badge -->
+                        <div class="absolute top-3 right-3 bg-black/55 backdrop-blur-md border border-white/15 px-3 py-1 rounded-full">
+                            <span id="activeHandsHud" class="text-[10px] font-mono font-semibold text-white/90">0 HANDS</span>
+                        </div>
+
+                        <!-- Standby Overlay -->
+                        <div id="cameraPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md text-center p-4">
+                            <div class="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center mb-3 text-white">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <p class="text-sm font-semibold text-white">Camera Off</p>
+                            <p class="text-xs text-slate-300 mt-1 max-w-xs">Click Start Camera and show one or both hands</p>
+                        </div>
+
+                        <!-- Live Detected Single-Word Pill (No 100% Counter) -->
+                        <div class="absolute bottom-3 left-3 mac-window px-3.5 py-1.5 rounded-full flex items-center gap-2">
+                            <span class="text-[10px] font-mono uppercase tracking-wider mac-text-muted">Sign</span>
+                            <span class="mac-text-muted opacity-40">|</span>
+                            <span id="detectedText" class="text-xs sm:text-sm font-semibold mac-text-muted">Camera Off</span>
+                        </div>
+                    </div>
+
+                    <!-- Custom Single-Word Sign Trainer -->
+                    <div class="mac-subcard p-4 rounded-2xl mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold">Custom Single-Word Trainer</span>
+                            <span class="text-[10px] font-mono mac-text-muted">1 OR 2 HANDS</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="signLabelInput" placeholder="Single word (e.g., WATER, DOCTOR)" class="flex-1 mac-input rounded-xl px-3.5 py-2 text-sm uppercase">
+                            <button id="recordSignBtn" class="bg-[#007AFF]/12 hover:bg-[#007AFF]/20 text-[#007AFF] dark:text-[#60A5FA] text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl transition-colors whitespace-nowrap active:scale-95">
+                                + Capture Sign
+                            </button>
+                        </div>
+                        <div id="trainedSignsList" class="flex flex-wrap gap-1.5 mt-2.5 min-h-[22px] items-center">
+                            <span class="text-[11px] mac-text-muted">Built-in signs: HELLO, THANKS, HELP, STOP, YES, PEACE, YOU, GOOD</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detected Words & Speech Output -->
+                <div class="pt-4 border-t mac-divider">
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="sentenceBox" class="text-xs font-semibold mac-text-muted">Translated Output</label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="autoSpeakToggle" checked class="sr-only peer">
+                            <div class="relative w-9 h-5 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:shadow-sm after:transition-all peer-checked:bg-[#34C759]"></div>
+                            <span class="text-xs font-medium mac-text-muted">Auto-Speak</span>
+                        </label>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="sentenceBox" readonly placeholder="Recognized words appear here..." class="flex-1 mac-input rounded-xl px-3.5 py-2 text-sm sm:text-base font-bold text-[#007AFF] dark:text-[#60A5FA]">
+                        <div class="flex gap-2">
+                            <button onclick="speakFullSentence()" class="flex-1 sm:flex-none bg-[#007AFF] hover:bg-[#0062CC] text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-colors active:scale-95">
+                                Speak
+                            </button>
+                            <button onclick="clearSentence()" class="flex-1 sm:flex-none mac-subcard hover:opacity-80 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium transition-opacity active:scale-95">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 2: SPEECH TO VISUAL SIGNS (Direct Laptop Microphone) -->
+            <section class="mac-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] font-mono font-semibold text-[#007AFF] dark:text-[#60A5FA]">02</span>
+                                <h2 class="text-base sm:text-lg font-bold tracking-tight">2. Speech &rarr; Visual Sign Cards (Laptop Mic)</h2>
+                            </div>
+                            <p class="text-xs mac-text-muted mt-0.5">Direct built-in laptop microphone capture &rarr; visual sign cards</p>
+                        </div>
+
+                        <button id="micButton" onclick="toggleLaptopMicRecognition()" class="flex items-center gap-2 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                            <span>Start Listening</span>
+                        </button>
+                    </div>
+
+                    <!-- Laptop Hardware Microphone Hardware Bar (Device Selector + Dialect + Live Level Meter) -->
+                    <div class="mac-subcard p-3 rounded-2xl mb-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <div class="w-7 h-7 rounded-lg bg-[#007AFF]/12 text-[#007AFF] dark:text-[#60A5FA] flex items-center justify-center shrink-0" title="Laptop Built-in Microphone">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 10v2a7 7 0 01-14 0v-2M12 19v4m-4 0h8"></path></svg>
+                            </div>
+                            <select id="micDeviceSelect" onchange="handleMicDeviceChange()" aria-label="Laptop Microphone Selector" class="mac-input rounded-xl px-2.5 py-1.5 text-xs font-medium flex-1 min-w-0 truncate cursor-pointer">
+                                <option value="">Laptop Built-in Microphone (Auto)</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                            <!-- Accent / Dialect Selector -->
+                            <select id="speechLangSelect" aria-label="Speech Recognition Language" class="mac-input rounded-xl px-2.5 py-1.5 text-xs font-mono font-semibold cursor-pointer">
+                                <option value="en-IN">EN-IN</option>
+                                <option value="en-US">EN-US</option>
+                                <option value="en-GB">EN-GB</option>
+                            </select>
+
+                            <!-- Real-Time Web Audio API Level Meter -->
+                            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border mac-divider" title="Live Laptop Mic Input Level">
+                                <span id="micHardwareDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                <div id="micLevelMeter" class="flex items-end gap-[2px] h-3.5 w-10" aria-hidden="true">
+                                    <span class="mic-bar flex-1 bg-[#34C759] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                    <span class="mic-bar flex-1 bg-[#34C759] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                    <span class="mic-bar flex-1 bg-[#34C759] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                    <span class="mic-bar flex-1 bg-[#007AFF] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                    <span class="mic-bar flex-1 bg-[#007AFF] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                    <span class="mic-bar flex-1 bg-[#5AC8FA] rounded-full transition-all duration-75" style="height: 20%"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Spoken Transcript Card -->
+                    <div class="mac-subcard p-4 rounded-2xl min-h-[108px] mb-4 flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-[11px] font-semibold uppercase tracking-wider mac-text-muted">Live Spoken Transcript</span>
+                                <span id="speechStatusPill" class="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-500/10 mac-text-muted">STANDBY</span>
+                            </div>
+
+                            <button onclick="clearSpeechPanel()" class="text-xs font-medium text-[#007AFF] dark:text-[#60A5FA] hover:underline">
+                                Clear
+                            </button>
+                        </div>
+
+                        <p id="speechTranscript" class="text-base sm:text-lg font-semibold leading-relaxed">
+                            Tap <span class="text-[#007AFF] dark:text-[#60A5FA]">Start Listening</span> to activate your laptop's built-in microphone and speak...
+                        </p>
+
+                        <!-- Microphone Permission / Browser Guidance Banner -->
+                        <div id="micGuidanceBanner" class="hidden mt-3 pt-2.5 border-t mac-divider text-xs text-[#FF9500] flex items-start gap-2">
+                            <span class="font-bold">!</span>
+                            <span id="micGuidanceText">Allow microphone access in your browser address bar to connect your laptop mic.</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Sign Cards Grid -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2.5">
+                            <span class="text-xs font-semibold mac-text-muted">Visual Sign Breakdown</span>
+                            <span id="cardCountBadge" class="text-[11px] font-mono mac-text-muted">Laptop Mic Ready</span>
+                        </div>
+
+                        <div id="signCardsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[310px] overflow-y-auto pr-1">
+                            <div class="col-span-full mac-subcard rounded-2xl p-7 text-center">
+                                <div class="w-10 h-10 rounded-full bg-[#007AFF]/10 text-[#007AFF] dark:text-[#60A5FA] flex items-center justify-center mx-auto mb-2.5">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                </div>
+                                <p class="text-xs sm:text-sm font-medium">Direct Laptop Microphone Mode</p>
+                                <p class="text-xs mac-text-muted mt-1">Speak into your laptop mic to generate single-word visual sign cards.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Guidance -->
+                <div class="mt-4 pt-3 border-t mac-divider flex items-center justify-between text-xs mac-text-muted">
+                    <span id="activeMicFooterLabel" class="truncate max-w-[65%]">Mic: Laptop Built-in Audio Input</span>
+                    <span class="font-mono text-[11px] shrink-0">1 HAND / 2 HANDS</span>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Direct Laptop Microphone & Voice-Only Speech-to-Visual-Sign Engine -->
+    <script>
+        // Appearance Mode Switcher (Defaults to crisp Light macOS Glass mode)
+        window.setAppearance = function(mode) {
+            const htmlEl = document.documentElement;
+            const lightBtn = document.getElementById("lightThemeBtn");
+            const darkBtn = document.getElementById("darkThemeBtn");
+
+            if (mode === "dark") {
+                htmlEl.classList.add("dark");
+                darkBtn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all bg-[#007AFF] text-white shadow-sm";
+                lightBtn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all mac-text-muted hover:opacity-80";
+            } else {
+                htmlEl.classList.remove("dark");
+                lightBtn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all bg-[#007AFF] text-white shadow-sm";
+                darkBtn.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all mac-text-muted hover:opacity-80";
+            }
+        };
+
+        // 38-Word Single-Word ISL/ASL Visual Sign Dictionary (LOVE completely omitted)
+        const signDictionary = {
+            "HELLO":     { icon: "👋", hands: 1, guide: "Open palm wave near forehead" },
+            "HI":        { icon: "👋", hands: 1, guide: "Small open-hand wave outward" },
+            "THANKS":    { icon: "🙏", hands: 2, guide: "Both palms together at chest" },
+            "THANK":     { icon: "🙏", hands: 2, guide: "Both palms together at chest" },
+            "NAMASTE":   { icon: "🙏", hands: 2, guide: "Press both palms together at chest" },
+            "HELP":      { icon: "🆘", hands: 2, guide: "Fist on flat palm lifted upward" },
+            "DOCTOR":    { icon: "🩺", hands: 2, guide: "Tap inner wrist pulse with fingers" },
+            "HOSPITAL":  { icon: "🏥", hands: 1, guide: "Trace cross on upper arm" },
+            "PAIN":      { icon: "😣", hands: 2, guide: "Point index fingers inward" },
+            "WATER":     { icon: "💧", hands: 1, guide: "Three fingers tap chin twice" },
+            "FOOD":      { icon: "🍲", hands: 1, guide: "Bunched fingertips tap mouth" },
+            "EAT":       { icon: "🍽️", hands: 1, guide: "Flat pinched hand moves to lips" },
+            "DRINK":     { icon: "🥤", hands: 1, guide: "Curved hand tilts toward mouth" },
+            "YOU":       { icon: "🫵", hands: 1, guide: "Index finger points forward" },
+            "PLEASE":    { icon: "🤲", hands: 1, guide: "Flat palm circles on chest" },
+            "SORRY":     { icon: "😔", hands: 1, guide: "Closed fist circles over heart" },
+            "YES":       { icon: "✊", hands: 1, guide: "Closed fist nods forward" },
+            "NO":        { icon: "👎", hands: 1, guide: "Index and middle tap thumb" },
+            "GOOD":      { icon: "👌", hands: 1, guide: "Thumb up or pinch OK sign" },
+            "OK":        { icon: "👌", hands: 1, guide: "Thumb and index form circle" },
+            "BAD":       { icon: "🙅", hands: 1, guide: "Hand flips downward from chin" },
+            "NAME":      { icon: "🪪", hands: 2, guide: "Tap two fingers crosswise twice" },
+            "WHAT":      { icon: "🤷", hands: 2, guide: "Open palms turn upward" },
+            "WHERE":     { icon: "📍", hands: 1, guide: "Index finger waves side to side" },
+            "WHEN":      { icon: "⏰", hands: 2, guide: "Index circles other index tip" },
+            "WHO":       { icon: "❓", hands: 1, guide: "Thumb on chin while index wiggles" },
+            "HOW":       { icon: "🔄", hands: 2, guide: "Curved hands roll forward" },
+            "WAIT":      { icon: "✋", hands: 2, guide: "Both open palms held steady" },
+            "STOP":      { icon: "🛑", hands: 2, guide: "Both palms facing forward" },
+            "GO":        { icon: "➡️", hands: 2, guide: "Both index fingers arc forward" },
+            "COME":      { icon: "🫴", hands: 2, guide: "Index fingers curl inward" },
+            "HOME":      { icon: "🏠", hands: 1, guide: "Fingertips touch cheek then jaw" },
+            "FAMILY":    { icon: "👨‍👩‍👧", hands: 2, guide: "Circle both hands outward" },
+            "FRIEND":    { icon: "🤝", hands: 2, guide: "Hooked index fingers link twice" },
+            "PEACE":     { icon: "✌️", hands: 1, guide: "Index and middle fingers raised in V" },
+            "EMERGENCY": { icon: "🚨", hands: 1, guide: "Raised hand shakes side to side" },
+            "MEDICINE":  { icon: "💊", hands: 2, guide: "Middle finger circles open palm" },
+            "HAPPY":     { icon: "😊", hands: 2, guide: "Flat palms brush upward on chest" },
+            "SAD":       { icon: "😢", hands: 2, guide: "Open hands slide down face" }
+        };
+
+        // Render Single-Word Visual Sign Cards from Spoken Input
+        window.renderSignCards = function(spokenText) {
+            const container = document.getElementById("signCardsContainer");
+            const countBadge = document.getElementById("cardCountBadge");
+            container.innerHTML = "";
+
+            const words = String(spokenText || "")
+                .replace(/[\/\\|_-]+/g, " ")
+                .replace(/[^a-zA-Z\s]/g, "")
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .map(w => w.toUpperCase());
+
+            if (words.length === 0) {
+                countBadge.textContent = "Laptop Mic Ready";
+                container.innerHTML = `
+                    <div class="col-span-full mac-subcard rounded-2xl p-7 text-center">
+                        <div class="w-10 h-10 rounded-full bg-[#007AFF]/10 text-[#007AFF] dark:text-[#60A5FA] flex items-center justify-center mx-auto mb-2.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        </div>
+                        <p class="text-xs sm:text-sm font-medium">Direct Laptop Microphone Mode</p>
+                        <p class="text-xs mac-text-muted mt-1">Speak into your laptop mic to generate single-word visual sign cards.</p>
+                    </div>`;
+                return;
+            }
+
+            countBadge.textContent = `${words.length} ${words.length === 1 ? "WORD" : "WORDS"}`;
+
+            words.forEach(word => {
+                const entry = signDictionary[word];
+                if (entry) {
+                    const isTwoHand = entry.hands === 2;
+                    container.innerHTML += `
+                        <div class="mac-subcard p-3.5 rounded-2xl text-center flex flex-col justify-between transition-transform duration-150 hover:-translate-y-0.5">
+                            <div>
+                                <div class="text-3xl mb-1.5">${entry.icon}</div>
+                                <div class="text-xs font-bold tracking-wide">${word}</div>
+                                <p class="text-[11px] mac-text-muted leading-snug mt-1">${entry.guide}</p>
+                            </div>
+                            <div class="mt-2.5">
+                                <span class="inline-block px-2.5 py-0.5 rounded-full bg-[#007AFF]/12 text-[#007AFF] dark:text-[#60A5FA] text-[9px] font-mono font-semibold">
+                                    ${isTwoHand ? "2 HANDS" : "1 HAND"}
+                                </span>
+                            </div>
+                        </div>`;
+                } else {
+                    const tiles = word.split("")
+                        .map(ch => `<span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-[#007AFF]/12 text-[#007AFF] dark:text-[#60A5FA] font-mono text-xs font-bold">${ch}</span>`)
+                        .join("");
+
+                    container.innerHTML += `
+                        <div class="mac-subcard p-3.5 rounded-2xl text-center flex flex-col justify-between transition-transform duration-150 hover:-translate-y-0.5">
+                            <div class="flex flex-wrap justify-center gap-1 my-1">${tiles}</div>
+                            <div class="mt-2.5">
+                                <div class="text-xs font-bold tracking-wide">${word}</div>
+                                <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-slate-500/12 mac-text-muted text-[9px] font-mono font-semibold">
+                                    FINGERSPELL
+                                </span>
+                            </div>
+                        </div>`;
+                }
+            });
+        };
+
+        // Direct Laptop Hardware Microphone + Web Audio Analyser + SpeechRecognition
+        let recognition = null;
+        let isListening = false;
+        let finalTranscript = "";
+        let audioStream = null;
+        let audioContext = null;
+        let analyserNode = null;
+        let meterAnimationId = null;
+        let selectedDeviceId = "";
+
+        // Enumerate audioinput devices and prioritize laptop built-in microphone
+        async function populateLaptopMicrophones(activeTrack = null) {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioInputs = devices.filter(d => d.kind === "audioinput");
+                const selectEl = document.getElementById("micDeviceSelect");
+                const footerLabel = document.getElementById("activeMicFooterLabel");
+
+                if (audioInputs.length === 0) return;
+
+                // Prioritize laptop built-in / internal microphone
+                const builtInRegex = /(built-in|internal|macbook|default|laptop|array|realtek|microphone)/i;
+                const activeDeviceIdFromTrack = activeTrack?.getSettings?.().deviceId;
+
+                let preferredDevice = audioInputs.find(d => d.deviceId === selectedDeviceId)
+                    || audioInputs.find(d => d.deviceId === activeDeviceIdFromTrack)
+                    || audioInputs.find(d => builtInRegex.test(d.label))
+                    || audioInputs[0];
+
+                selectEl.innerHTML = "";
+                audioInputs.forEach((dev, idx) => {
+                    const option = document.createElement("option");
+                    option.value = dev.deviceId;
+                    const cleanLabel = dev.label
+                        ? dev.label.replace(/\s*\([0-9a-fA-F]{4}:[0-9a-fA-F]{4}\)\s*$/, "")
+                        : `Built-in Laptop Microphone ${idx + 1}`;
+                    option.textContent = cleanLabel;
+                    if (preferredDevice && dev.deviceId === preferredDevice.deviceId) {
+                        option.selected = true;
+                    }
+                    selectEl.appendChild(option);
+                });
+
+                if (preferredDevice) {
+                    selectedDeviceId = preferredDevice.deviceId;
+                    const chosenText = selectEl.options[selectEl.selectedIndex]?.textContent || "Built-in Microphone";
+                    footerLabel.textContent = `Mic: ${chosenText}`;
+                }
+            } catch (e) {
+                console.warn("Device enumeration notice:", e);
+            }
+        }
+
+        // Initial device discovery on page load
+        populateLaptopMicrophones();
+        if (navigator.mediaDevices && "ondevicechange" in navigator.mediaDevices) {
+            navigator.mediaDevices.ondevicechange = () => populateLaptopMicrophones();
+        }
+
+        // Start Web Audio API real-time waveform meter on laptop MediaStream
+        function startAudioLevelMeter(stream) {
+            stopAudioLevelMeter();
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioCtx();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 64;
+                analyserNode.smoothingTimeConstant = 0.72;
+                source.connect(analyserNode);
+
+                const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+                const bars = document.querySelectorAll("#micLevelMeter .mic-bar");
+                const hardwareDot = document.getElementById("micHardwareDot");
+                hardwareDot.className = "w-2 h-2 rounded-full bg-[#34C759] animate-pulse";
+
+                function updateBars() {
+                    if (!isListening || !analyserNode) return;
+                    analyserNode.getByteFrequencyData(dataArray);
+                    const multi = [1.1, 1.35, 1.5, 1.35, 1.15, 0.95];
+                    bars.forEach((bar, i) => {
+                        const rawVal = dataArray[i + 1] || 0;
+                        const pct = Math.min(100, Math.max(18, Math.round((rawVal / 255) * 100 * multi[i])));
+                        bar.style.height = `${pct}%`;
+                    });
+                    meterAnimationId = requestAnimationFrame(updateBars);
+                }
+                updateBars();
+            } catch (e) {
+                console.warn("AudioContext meter notice:", e);
+            }
+        }
+
+        function stopAudioLevelMeter() {
+            if (meterAnimationId) {
+                cancelAnimationFrame(meterAnimationId);
+                meterAnimationId = null;
+            }
+            if (audioContext) {
+                try { audioContext.close(); } catch (e) {}
+                audioContext = null;
+            }
+            analyserNode = null;
+            const bars = document.querySelectorAll("#micLevelMeter .mic-bar");
+            bars.forEach(bar => { bar.style.height = "20%"; });
+            const hardwareDot = document.getElementById("micHardwareDot");
+            if (hardwareDot) hardwareDot.className = "w-2 h-2 rounded-full bg-slate-400";
+        }
+
+        function releaseLaptopMicStream() {
+            stopAudioLevelMeter();
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
+        }
+
+        // Switch microphone hardware device on the fly
+        window.handleMicDeviceChange = async function() {
+            const selectEl = document.getElementById("micDeviceSelect");
+            selectedDeviceId = selectEl.value;
+            const chosenText = selectEl.options[selectEl.selectedIndex]?.textContent || "Laptop Microphone";
+            document.getElementById("activeMicFooterLabel").textContent = `Mic: ${chosenText}`;
+
+            if (isListening) {
+                try { if (recognition) recognition.stop(); } catch (e) {}
+                releaseLaptopMicStream();
+                await connectLaptopMicAndSpeech();
+            }
+        };
+
+        function showMicGuidance(text) {
+            const banner = document.getElementById("micGuidanceBanner");
+            const msg = document.getElementById("micGuidanceText");
+            msg.textContent = text;
+            banner.classList.remove("hidden");
+        }
+
+        function hideMicGuidance() {
+            document.getElementById("micGuidanceBanner").classList.add("hidden");
+        }
+
+        function setMicIdleUI() {
+            const btn = document.getElementById("micButton");
+            btn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                <span>Start Listening</span>
+            `;
+            btn.className = "flex items-center gap-2 bg-[#007AFF] hover:bg-[#0062CC] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95";
+        }
+
+        function setMicActiveUI() {
+            const btn = document.getElementById("micButton");
+            btn.innerHTML = `
+                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                <span>Stop Listening</span>
+            `;
+            btn.className = "flex items-center gap-2 bg-[#FF3B30] hover:bg-[#D70015] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-full shadow-sm transition-all active:scale-95";
+        }
+
+        window.clearSpeechPanel = function() {
+            finalTranscript = "";
+            document.getElementById("speechStatusPill").textContent = isListening ? "MIC LIVE" : "STANDBY";
+            document.getElementById("speechTranscript").innerHTML = isListening
+                ? "Laptop mic active... speak clearly into your microphone."
+                : `Tap <span class="text-[#007AFF] dark:text-[#60A5FA]">Start Listening</span> to activate your laptop's built-in microphone and speak...`;
+            window.renderSignCards("");
+        };
+
+        // Main Toggle: Explicitly acquires laptop microphone via getUserMedia FIRST, then starts SpeechRecognition
+        window.toggleLaptopMicRecognition = async function() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const statusPill = document.getElementById("speechStatusPill");
+
+            if (!SpeechRec) {
+                statusPill.textContent = "UNSUPPORTED";
+                statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FF9500]/15 text-[#FF9500]";
+                showMicGuidance("Speech Recognition is not supported in this browser. Please open SignBridge in Google Chrome, Microsoft Edge, or Safari.");
+                window.showToast("Speech recognition is unsupported in this browser.", "warn");
+                return;
+            }
+
+            if (isListening) {
+                isListening = false;
+                try { if (recognition) recognition.stop(); } catch (e) {}
+                releaseLaptopMicStream();
+                statusPill.textContent = "STOPPED";
+                statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-500/10 mac-text-muted";
+                setMicIdleUI();
+                return;
+            }
+
+            hideMicGuidance();
+            finalTranscript = "";
+            isListening = true;
+            setMicActiveUI();
+            statusPill.textContent = "CONNECTING MIC";
+            statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FF9500]/15 text-[#FF9500]";
+            document.getElementById("speechTranscript").textContent = "Connecting directly to laptop microphone...";
+
+            await connectLaptopMicAndSpeech();
+        };
+
+        async function connectLaptopMicAndSpeech() {
+            const statusPill = document.getElementById("speechStatusPill");
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                isListening = false;
+                setMicIdleUI();
+                statusPill.textContent = "UNSUPPORTED";
+                showMicGuidance("Direct microphone access (getUserMedia) is unavailable in this browser context.");
+                return;
+            }
+
+            try {
+                // Step 1: Enumerate devices beforehand to identify laptop's built-in microphone
+                await populateLaptopMicrophones();
+
+                // Step 2: Explicitly acquire the laptop's hardware microphone via getUserMedia
+                const audioConstraints = {
+                    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                };
+
+                try {
+                    audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                } catch (exactErr) {
+                    // Fallback to default laptop microphone if exact deviceId is unavailable
+                    audioStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                    });
+                }
+
+                if (!isListening) {
+                    releaseLaptopMicStream();
+                    return;
+                }
+
+                // Refresh device labels now that permission is granted & attach live audio level meter
+                const activeAudioTrack = audioStream.getAudioTracks()[0] || null;
+                await populateLaptopMicrophones(activeAudioTrack);
+                startAudioLevelMeter(audioStream);
+
+                const micName = activeAudioTrack?.label
+                    ? activeAudioTrack.label.replace(/\s*\([0-9a-fA-F]{4}:[0-9a-fA-F]{4}\)\s*$/, "")
+                    : "Laptop Built-in Microphone";
+
+                statusPill.textContent = "MIC LIVE";
+                statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#34C759]/15 text-[#34C759]";
+                document.getElementById("speechTranscript").textContent = "Laptop mic active... speak clearly into your microphone.";
+                window.showToast(`Connected: ${micName}`, "success");
+
+                // Step 3: Launch SpeechRecognition concurrently with the active laptop mic stream
+                launchSpeechSession();
+            } catch (err) {
+                isListening = false;
+                releaseLaptopMicStream();
+                setMicIdleUI();
+                statusPill.textContent = "MIC BLOCKED";
+                statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FF3B30]/15 text-[#FF3B30]";
+
+                if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    showMicGuidance("Laptop microphone permission was denied. Allow microphone access in your browser site settings and tap Start Listening again.");
+                } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                    showMicGuidance("No built-in or external microphone was found on this laptop.");
+                } else {
+                    showMicGuidance(`Unable to access laptop microphone (${err.message || err.name}).`);
+                }
+                window.showToast("Could not connect to laptop microphone.", "warn");
+            }
+        }
+
+        function launchSpeechSession() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec || !isListening) return;
+
+            const statusPill = document.getElementById("speechStatusPill");
+            const langSelect = document.getElementById("speechLangSelect");
+            recognition = new SpeechRec();
+            recognition.lang = langSelect ? langSelect.value : "en-IN";
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                let interim = "";
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const text = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript = (finalTranscript + " " + text).trim();
+                    } else {
+                        interim += text;
+                    }
+                }
+                const liveFull = (finalTranscript + " " + interim).trim();
+                if (liveFull) {
+                    statusPill.textContent = "TRANSCRIBING";
+                    document.getElementById("speechTranscript").textContent = liveFull;
+                    window.renderSignCards(liveFull);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === "no-speech" || event.error === "aborted") {
+                    if (isListening) statusPill.textContent = "MIC LIVE";
+                    return;
+                }
+                isListening = false;
+                releaseLaptopMicStream();
+                setMicIdleUI();
+                statusPill.textContent = "MIC ERROR";
+                statusPill.className = "text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-[#FF3B30]/15 text-[#FF3B30]";
+
+                if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+                    showMicGuidance("Speech recognition permission was denied. Ensure microphone access is allowed in browser settings.");
+                } else if (event.error === "audio-capture") {
+                    showMicGuidance("Laptop microphone audio capture failed. Check your system sound input settings.");
+                } else {
+                    showMicGuidance(`Speech recognition paused (${event.error}). Check your microphone and internet connection.`);
+                }
+                window.showToast(`Speech error: ${event.error}`, "warn");
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    setTimeout(() => {
+                        if (isListening) launchSpeechSession();
+                    }, 120);
+                } else {
+                    setMicIdleUI();
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (err) {
+                if (isListening) {
+                    setTimeout(() => {
+                        if (isListening) launchSpeechSession();
+                    }, 200);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
